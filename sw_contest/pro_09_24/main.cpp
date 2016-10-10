@@ -9,8 +9,14 @@ int N;
 #define N_MAX 25
 
 int g_r[N_TANKS], g_c[N_TANKS];
-
 int map[N_MAX][N_MAX] = {0};
+int beenthere[N_MAX][N_MAX][N_MAX][N_MAX] = {0};
+
+void memset(void *ptr, int val, unsigned long nr)
+{
+	for (unsigned int i = 0; i < nr; i++)
+		*((int *) ptr + i) = val;
+}
 
 #define N_MAX_QUEUE 1024*1024
 template <class T>
@@ -31,33 +37,14 @@ public:
 		return elem;
 	}
 
-	void print_all()
-	{
-		int it = 0;
-		cout << "====================================" << endl;
-		for (T** i = qbegin; i != qend; i++) {
-			cout << "q["<<it++<<"] = " << **i << endl;
-		}
-		cout << "====================================" << endl;
-	}
-
-	bool in_queue(T *e) {
-		//cout << "===========Searching for============" << endl;
-		//cout << *e << endl;
-		//cout << "====================================" << endl;
-		for (T** i = qbegin; i != qend; i++) {
-			if (*e == **i)
-				return true;
-		}
-		//cout << "====================================" << endl;
-		return false;
-	}
-
 	int size() {
 		return (int) (qend - qbegin);
 	}
 
 	void flush() {
+		for (T** i = qbegin; i != qend; i++) {
+			delete(*i);
+		}
 		qbegin = _store;
 		qend =_store;
 	}
@@ -92,7 +79,6 @@ struct position {
 	position(const struct position& _p) : r(_p.r), c(_p.c) {};
 	position() : r(0), c(0) {};
 	struct position *get_new_pos_check(int r, int c) {
-		//cout << "r = " << r << " c= " << c << endl;
 		if (inside_map(r, c) && !map[r][c]) {
 			return new position(r, c);
 		} else {
@@ -136,6 +122,11 @@ struct both_position {
 		}
 		return false;
 	}
+	~both_position() {
+		for (int i = 0; i < N_TANKS; i++) {
+			//delete(pos[i]);
+		}
+	}
 	friend ostream& operator<<(ostream& os, const both_position& dt);
 };
 
@@ -163,37 +154,25 @@ bool both_position_allowed(struct position *p1, struct position *p2)
 	return true;
 }
 
-int solve(struct both_position bp)
+int solve(struct both_position *bp)
 {
-	q.push(&bp);
+	q.push(bp);
 	int step = 0;
 	while(q.size() != 0) {
-		//cout << "iteration " << step << " qsize " << q.size() << endl;
-		//q.print_all();
 		struct both_position *bp = q.pop();
-		if (!(step % 10000)) {
-			cout << "lvl " << bp->_level << endl;
-			cout << "qsize " << q.size() << endl;
-		}
 		if (bp->_level > 200) {
 			return -1;
 		}
-		//cout << "Considering bp" << endl;
-		//cout << *bp << endl;
 		for (int i_t = 0; i_t < N_TANKS; i_t++) {
 			n_available_positions[i_t] = 0;
 			struct position *p = bp->pos[i_t];
-			//cout << "Get position " << "[" << p->r << " , " << p->c << "]" << endl;
 			for (int direction = 0; direction < DIRECTION_END; direction++) {
-				//cout << "direction " << direction << endl;
 				struct position *new_pos = p->get_new_pos((DIRECTION)direction);
-				//cout << "new_pos is " << new_pos << endl;
 				if (new_pos) {
 					available_positions[i_t][n_available_positions[i_t]] = new_pos;
 					n_available_positions[i_t]++;
 				}
 			}
-			//cout << "tank " << i_t << " , " << n_available_positions[i_t] << " elements added" << endl;
 		}
 		for (int i_pos1 = 0; i_pos1 < n_available_positions[0]; i_pos1++) {
 			struct position *p1 = available_positions[0][i_pos1];
@@ -210,15 +189,16 @@ int solve(struct both_position bp)
 					}
 					if (in_place)
 						return bp->_level + 1;
-					//cout << "Adding bp" << endl;
-					if (!q.in_queue(new_bp)) {
-						//cout << "Adding elem" << endl;
-						//cout << *new_bp << endl;
+					if (!beenthere[p1->r][p1->c][p2->r][p2->c]) {
 						q.push(new_bp);
+						beenthere[p1->r][p1->c][p2->r][p2->c] = 1;
+					} else {
+						delete(new_bp);
 					}
 				}
 			}
 		}
+		delete(bp);
 		step++;
 	}
 	return -1;
@@ -228,12 +208,15 @@ int main()
 {
 	cin >> T;
 	for (int i_t = 0; i_t < T; i_t++) {
-		struct both_position bp;
+		struct both_position *bp = new both_position();
+		memset(map, 0x0, N_MAX);
+		q.flush();
+		memset(beenthere, 0x0, N_MAX * N_MAX * N_MAX * N_MAX);
 		cin >> N;
 		for (int i_c = 0; i_c < N_TANKS; i_c++) {
 			int r, c;
 			cin >> r >> c;
-			bp.pos[i_c] = new position(r - 1, c - 1);
+			bp->pos[i_c] = new position(r - 1, c - 1);
 			cin >> g_r[i_c] >> g_c[i_c];
 			g_r[i_c]--; g_c[i_c]--;
 		}
@@ -242,7 +225,6 @@ int main()
 				cin >> map[i_r][i_c];
 			}
 		}
-		q.flush();
 		int ans = solve(bp);
 		cout << "#" << i_t << " " << ans << endl;
 	}
