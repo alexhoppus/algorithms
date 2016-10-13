@@ -33,18 +33,17 @@ public:
 	T *pop() {
 		T *elem = *qbegin;
 		qbegin++;
-
 		return elem;
 	}
 
 	int size() {
 		return (int) (qend - qbegin);
 	}
+	int vsize() {
+		return (int) (qend - &_store[0]);
+	}
 
 	void flush() {
-		for (T** i = qbegin; i != qend; i++) {
-			delete(*i);
-		}
 		qbegin = _store;
 		qend =_store;
 	}
@@ -78,15 +77,28 @@ struct position {
 	position(int _r, int _c) : r(_r), c(_c) {};
 	position(const struct position& _p) : r(_p.r), c(_p.c) {};
 	position() : r(0), c(0) {};
-	struct position *get_new_pos_check(int r, int c) {
-		if (inside_map(r, c) && !map[r][c]) {
-			return new position(r, c);
-		} else {
-			return NULL;
-		}
+
+};
+
+#define POS_CACHE_MAX 10*1024*1024
+struct position pos_cache[POS_CACHE_MAX];
+static int pos_cache_idx = 0;
+static inline struct position *alloc_pos()
+{
+	return &pos_cache[pos_cache_idx++];
+}
+
+struct position *get_new_pos_check(int r, int c) {
+	if (inside_map(r, c) && !map[r][c]) {
+		struct position *p = alloc_pos();
+		p->r = r; p->c = c;
+		return p;
+	} else {
+		return NULL;
 	}
-	struct position *get_new_pos(DIRECTION d) {
-		switch(d) {
+}
+struct position *get_new_pos(DIRECTION d, int r, int c) {
+	switch(d) {
 		case UP_LEFT:
 			return get_new_pos_check(r - 1, c - 1);
 		case UP:
@@ -105,9 +117,8 @@ struct position {
 			return get_new_pos_check(r + 1, c);
 		case DOWN_RIGHT:
 			return get_new_pos_check(r + 1, c + 1);
-		};
-	}
-};
+	};
+}
 
 struct both_position {
 	int _level;
@@ -122,13 +133,16 @@ struct both_position {
 		}
 		return false;
 	}
-	~both_position() {
-		for (int i = 0; i < N_TANKS; i++) {
-			//delete(pos[i]);
-		}
-	}
 	friend ostream& operator<<(ostream& os, const both_position& dt);
 };
+
+#define BPOS_CACHE_MAX 1024*1024
+struct both_position bpos_cache[BPOS_CACHE_MAX];
+static int bpos_cache_idx = 0;
+static inline struct both_position *alloc_bpos()
+{
+	return &bpos_cache[bpos_cache_idx++];
+}
 
 ostream& operator<<(ostream& os, const both_position& bp)
 {
@@ -160,14 +174,11 @@ int solve(struct both_position *bp)
 	int step = 0;
 	while(q.size() != 0) {
 		struct both_position *bp = q.pop();
-		if (bp->_level > 200) {
-			return -1;
-		}
 		for (int i_t = 0; i_t < N_TANKS; i_t++) {
 			n_available_positions[i_t] = 0;
 			struct position *p = bp->pos[i_t];
 			for (int direction = 0; direction < DIRECTION_END; direction++) {
-				struct position *new_pos = p->get_new_pos((DIRECTION)direction);
+				struct position *new_pos = get_new_pos((DIRECTION)direction, p->r, p->c);
 				if (new_pos) {
 					available_positions[i_t][n_available_positions[i_t]] = new_pos;
 					n_available_positions[i_t]++;
@@ -179,26 +190,18 @@ int solve(struct both_position *bp)
 			for (int i_pos2 = 0; i_pos2 < n_available_positions[1]; i_pos2++) {
 				struct position *p2 = available_positions[1][i_pos2];
 				if (both_position_allowed(p1, p2)) {
-					bool in_place = true;
-					struct both_position *new_bp = new both_position(p1, p2, bp->_level + 1);
-					for (int i = 0; i < N_TANKS; i++) {
-						if (new_bp->pos[i]->r == g_r[i] && new_bp->pos[i]->c == g_c[i]) {
-						}
-						else
-							in_place = false;
-					}
-					if (in_place)
-						return bp->_level + 1;
 					if (!beenthere[p1->r][p1->c][p2->r][p2->c]) {
+						struct both_position *new_bp = alloc_bpos();
+						new_bp->pos[0] = p1; new_bp->pos[1] = p2; new_bp->_level = bp->_level + 1;
+						if (new_bp->pos[0]->r == g_r[0] && new_bp->pos[0]->c == g_c[0] &&
+								new_bp->pos[1]->r == g_r[1] && new_bp->pos[1]->c == g_c[1])
+							return bp->_level + 1;
 						q.push(new_bp);
 						beenthere[p1->r][p1->c][p2->r][p2->c] = 1;
-					} else {
-						delete(new_bp);
 					}
 				}
 			}
 		}
-		delete(bp);
 		step++;
 	}
 	return -1;
@@ -208,15 +211,18 @@ int main()
 {
 	cin >> T;
 	for (int i_t = 0; i_t < T; i_t++) {
-		struct both_position *bp = new both_position();
-		memset(map, 0x0, N_MAX);
+		pos_cache_idx = 0; bpos_cache_idx = 0;
+		struct both_position *bp = alloc_bpos();
 		q.flush();
+		memset(map, 0x0, N_MAX);
 		memset(beenthere, 0x0, N_MAX * N_MAX * N_MAX * N_MAX);
 		cin >> N;
 		for (int i_c = 0; i_c < N_TANKS; i_c++) {
 			int r, c;
+			struct position *p = alloc_pos();
 			cin >> r >> c;
-			bp->pos[i_c] = new position(r - 1, c - 1);
+			p->r = r - 1; p->c = c - 1;
+			bp->pos[i_c] = p;
 			cin >> g_r[i_c] >> g_c[i_c];
 			g_r[i_c]--; g_c[i_c]--;
 		}
@@ -226,7 +232,7 @@ int main()
 			}
 		}
 		int ans = solve(bp);
-		cout << "#" << i_t << " " << ans << endl;
+		cout << "#" << i_t + 1 << " " << ans << endl;
 	}
 	return 0;
 }
