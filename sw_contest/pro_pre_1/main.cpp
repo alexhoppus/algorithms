@@ -84,7 +84,7 @@ void add_edje(int v1, int v2, int cost)
 	put_to_edje_arr(v1, v2, cost);
 }
 
-#define N_MAX_QUEUE 1024*1024
+#define N_MAX_QUEUE 2*1024*1024
 template <class T>
 class queue {
 	T *_store[N_MAX_QUEUE];
@@ -92,6 +92,8 @@ class queue {
 	T **qend;
 public:
 	void push(T* e) {
+		if (vsize() > N_MAX_QUEUE)
+			cout << "Queue overflow" << endl;
 		*qend = e;
 		qend++;
 	}
@@ -123,14 +125,16 @@ struct vertex_dist {
 	int d;
 };
 
-struct vertex_dist vd[MAX_N];
-static int n_vd = 0;
 
 queue<struct vertex_dist> q;
 
+#define MAX_VD_CACHE 2*1024*1024
+struct vertex_dist vd[MAX_VD_CACHE];
+static int n_vd = 0;
+
 struct vertex_dist *alloc_vd()
 {
-	if (n_vd + 1 > MAX_N)
+	if (n_vd + 1 > MAX_VD_CACHE)
 		cout << "OVERFLOW alloc_vd" << endl;
 	return &vd[n_vd++];
 }
@@ -161,9 +165,6 @@ struct vertex_dist *bfs(struct vertex_dist *vd)
 #endif
 		for (int i = 0; i < n_adj_list[*v]; i++) {
 			int *neighbour = &adj_list[*v][i];
-#if DEBUG
-			cout << i << ": v " << *neighbour << endl;
-#endif
 			if (!is_edje_forbidden(*v, *neighbour) && !is_visited(*neighbour)) {
 				struct vertex_dist *neighbour_vd = alloc_vd();
 				neighbour_vd->v = *neighbour;
@@ -178,6 +179,9 @@ struct vertex_dist *bfs(struct vertex_dist *vd)
 
 int solve_for_vertex(int v)
 {
+	n_vd = 0;
+	q.flush();
+
 	struct vertex_dist *vd = alloc_vd();
 	vd->v = v;
 	vd->d = 0;
@@ -190,7 +194,9 @@ int solve_for_vertex(int v)
 int solve_testcase()
 {
 	int max_dist = solve_for_vertex(1);
-
+#if DEBUG
+	cout << "nedjes " << n_edjes << endl;
+#endif
 	for (int i = 0; i < n_edjes; i++) {
 		int cur_max_dist = 0;
 		struct edje e = edjes[i];
@@ -221,9 +227,9 @@ int main()
 		memset(n_adj_list, 0x0, MAX_N);
 		memset(edjes, 0x0, MAX_N);
 		memset(visited, 0x0, MAX_N);
-		memset(vd, 0x0, MAX_N);
 		n_edjes = 0;
 		n_vd = 0;
+		q.flush();
 		cin >> N;
 		for (int i_n = 0; i_n < N - 1; i_n++) {
 			short v1, v2, cost;
