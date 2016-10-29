@@ -151,7 +151,7 @@ struct vertex_dist *bfs(struct vertex_dist *vd)
 #endif
 		for (int i = 0; i < n_adj_list[*v]; i++) {
 			int *neighbour = &adj_list[*v][i];
-			if (!is_edje_forbidden(*v, *neighbour) && !is_visited(*neighbour)) {
+			if (!is_visited(*neighbour) && !is_edje_forbidden(*v, *neighbour)) {
 				struct vertex_dist *neighbour_vd = alloc_vd();
 				neighbour_vd->v = *neighbour;
 				neighbour_vd->d = vd->d + get_cost(*neighbour, *v);
@@ -211,7 +211,7 @@ int main()
 		memset(adj_list, 0x0, MAX_N * MAX_N);
 		memset(adj_list_cost, 0x0, MAX_N * MAX_N);
 		memset(n_adj_list, 0x0, MAX_N);
-		memset(edjes, 0x0, MAX_N);
+		memset(edjes, 0x0, (sizeof(struct edje) / sizeof(int)) * MAX_N);
 		n_edjes = 0;
 		n_vd = 0;
 		queue::flush();
