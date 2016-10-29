@@ -83,46 +83,38 @@ void add_edje(int v1, int v2, int cost)
 }
 
 #define N_MAX_QUEUE 2*1024*1024
-template <class T>
-class queue {
-	T *_store[N_MAX_QUEUE];
-	T **qbegin;
-	T **qend;
-public:
-	void push(T* e) {
+namespace queue {
+	void *_store[N_MAX_QUEUE];
+	void **qbegin;
+	void **qend;
+	static inline void push(void* e) {
 		*qend = e;
 		qend++;
 	}
 
-	T *pop() {
-		T *elem = *qbegin;
+	static inline void *pop() {
+		void *elem = *qbegin;
 		qbegin++;
 		return elem;
 	}
 
-	int size() {
+	static inline int size() {
 		return (int) (qend - qbegin);
 	}
-	int vsize() {
+	static inline int vsize() {
 		return (int) (qend - &_store[0]);
 	}
 
-	void flush() {
+	static inline void flush() {
 		qbegin = _store;
 		qend =_store;
 	}
-	queue() : qbegin(_store), qend(_store) {
-	};
 };
-
 
 struct vertex_dist {
 	int v;
 	int d;
 };
-
-
-queue<struct vertex_dist> q;
 
 #define MAX_VD_CACHE 2*1024*1024
 struct vertex_dist vd[MAX_VD_CACHE];
@@ -139,14 +131,14 @@ struct vertex_dist *bfs(struct vertex_dist *vd)
 	struct vertex_dist *max_vd = vd;
 	memset(visited, 0x0, MAX_N);
 
-	q.push(vd);
+	queue::push(vd);
 	set_visited(vd->v);
 #if DEBUG
 	cout << "BFS started from vertex " << vd->v << endl;
 #endif
 
-	while(q.size()) {
-		struct vertex_dist *vd = q.pop();
+	while(queue::size()) {
+		struct vertex_dist *vd = (struct vertex_dist *)queue::pop();
 		if (vd->d > max_vd->d) {
 #if DEBUG
 			cout << "max_vd set to " << vd->d << endl;
@@ -155,7 +147,7 @@ struct vertex_dist *bfs(struct vertex_dist *vd)
 		}
 		int *v = &vd->v;
 #if DEBUG
-		cout << "qsize " << q.size() <<  " v " << vd->v << " dist " << vd->d << " n_adj_list[*v] " << n_adj_list[*v] << endl;
+		cout << "qsize " << queue::size() <<  " v " << vd->v << " dist " << vd->d << " n_adj_list[*v] " << n_adj_list[*v] << endl;
 #endif
 		for (int i = 0; i < n_adj_list[*v]; i++) {
 			int *neighbour = &adj_list[*v][i];
@@ -163,7 +155,7 @@ struct vertex_dist *bfs(struct vertex_dist *vd)
 				struct vertex_dist *neighbour_vd = alloc_vd();
 				neighbour_vd->v = *neighbour;
 				neighbour_vd->d = vd->d + get_cost(*neighbour, *v);
-				q.push(neighbour_vd);
+				queue::push(neighbour_vd);
 				set_visited(*neighbour);
 			}
 		}
@@ -174,7 +166,7 @@ struct vertex_dist *bfs(struct vertex_dist *vd)
 int solve_for_vertex(int v)
 {
 	n_vd = 0;
-	q.flush();
+	queue::flush();
 
 	struct vertex_dist *vd = alloc_vd();
 	vd->v = v;
@@ -222,7 +214,7 @@ int main()
 		memset(edjes, 0x0, MAX_N);
 		n_edjes = 0;
 		n_vd = 0;
-		q.flush();
+		queue::flush();
 		cin >> N;
 		for (int i_n = 0; i_n < N - 1; i_n++) {
 			short v1, v2, cost;
