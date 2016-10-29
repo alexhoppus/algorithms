@@ -1,6 +1,6 @@
 #include <iostream>
 
-#define MAX_N 2000
+#define MAX_N 2001
 //#define DEBUG 1
 using namespace std;
 
@@ -13,19 +13,16 @@ struct edje {
 	int cost;
 };
 
-int edge_cost(struct edje *e)
+static inline int edge_cost(struct edje *e)
 {
 	return e->cost;
 }
 
 int visited[MAX_N];
 
-int get_cost(int v1, int v2)
+static inline int get_cost(int v1, int v2)
 {
-	for (int i = 0; i < n_adj_list[v1]; i++) {
-		if (adj_list[v1][i] == v2)
-			return adj_list_cost[v1][i];
-	}
+	return adj_list_cost[v1][v2];
 }
 
 static inline void set_visited(int v1)
@@ -73,7 +70,8 @@ void memset(void *ptr, int val, unsigned long nr)
 void _add_edje(int v1, int v2, int cost)
 {
 	adj_list[v1][n_adj_list[v1]] = v2;
-	adj_list_cost[v1][n_adj_list[v1]] = cost;
+	adj_list_cost[v1][v2] = cost;
+	adj_list_cost[v2][v1] = cost;
 	n_adj_list[v1]++;
 }
 
@@ -92,8 +90,6 @@ class queue {
 	T **qend;
 public:
 	void push(T* e) {
-		if (vsize() > N_MAX_QUEUE)
-			cout << "Queue overflow" << endl;
 		*qend = e;
 		qend++;
 	}
@@ -134,8 +130,6 @@ static int n_vd = 0;
 
 struct vertex_dist *alloc_vd()
 {
-	if (n_vd + 1 > MAX_VD_CACHE)
-		cout << "OVERFLOW alloc_vd" << endl;
 	return &vd[n_vd++];
 }
 
@@ -226,7 +220,6 @@ int main()
 		memset(adj_list_cost, 0x0, MAX_N * MAX_N);
 		memset(n_adj_list, 0x0, MAX_N);
 		memset(edjes, 0x0, MAX_N);
-		memset(visited, 0x0, MAX_N);
 		n_edjes = 0;
 		n_vd = 0;
 		q.flush();
