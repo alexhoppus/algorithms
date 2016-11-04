@@ -84,16 +84,15 @@ void add_edje(int v1, int v2, int cost)
 
 #define N_MAX_QUEUE 5*1024
 namespace queue {
-	void *_store[N_MAX_QUEUE];
-	void **qbegin;
-	void **qend;
-	static inline void push(void* e) {
-		*qend = e;
+	int _store[N_MAX_QUEUE];
+	int qbegin, qend;
+	static inline void push(int e) {
+		_store[qend] = e;
 		qend++;
 	}
 
-	static inline void *pop() {
-		void *elem = *qbegin;
+	static inline int pop() {
+		int elem = _store[qbegin];
 		qbegin++;
 		return elem;
 	}
@@ -101,13 +100,10 @@ namespace queue {
 	static inline int size() {
 		return (int) (qend - qbegin);
 	}
-	static inline int vsize() {
-		return (int) (qend - &_store[0]);
-	}
 
 	static inline void flush() {
-		qbegin = _store;
-		qend =_store;
+		qbegin = 0;
+		qend = 0;
 	}
 };
 
@@ -116,29 +112,29 @@ int bfs(int vertex)
 	int max_v = vertex;
 	memset(visited, -1, MAX_N);
 
-	queue::push(&vertex);
+	queue::push(vertex);
 	set_visited(vertex, 0);
 
 	while(queue::size()) {
-		int *v = (int *)queue::pop();
+		int v = queue::pop();
 #if DEBUG
 	cout << "BFS pop vertex " << *v << endl;
 #endif
-		if (visited[max_v] < visited[*v]) {
+		if (visited[max_v] < visited[v]) {
 #if DEBUG
-			cout << "max_v set to " << *v << endl;
+			cout << "max_v set to " << v << endl;
 #endif
-			max_v = *v;
+			max_v = v;
 		}
-		for (int i = 0; i < n_adj_list[*v]; i++) {
-			int *neighbour = &adj_list[*v][i];
-			if (!is_visited(*neighbour) && !is_edje_forbidden(*v, *neighbour)) {
+		for (int i = 0; i < n_adj_list[v]; i++) {
+			int neighbour = adj_list[v][i];
+			if (!is_visited(neighbour) && !is_edje_forbidden(v, neighbour)) {
 #if DEBUG
-				cout << "neighbour " << *neighbour << endl;
-				cout << "visited["<< *neighbour << "] = " << visited[*v] + get_cost(*neighbour, *v) << endl;
+				cout << "neighbour " << neighbour << endl;
+				cout << "visited["<< neighbour << "] = " << visited[v] + get_cost(neighbour, v) << endl;
 #endif
 				queue::push(neighbour);
-				set_visited(*neighbour, visited[*v] + get_cost(*neighbour, *v));
+				set_visited(neighbour, visited[v] + get_cost(neighbour, v));
 			}
 		}
 	}
