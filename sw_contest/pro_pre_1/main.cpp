@@ -82,7 +82,7 @@ void add_edje(int v1, int v2, int cost)
 	put_to_edje_arr(v1, v2, cost);
 }
 
-#define N_MAX_QUEUE 2*1024*1024
+#define N_MAX_QUEUE 5*1024
 namespace queue {
 	void *_store[N_MAX_QUEUE];
 	void **qbegin;
@@ -179,7 +179,7 @@ int solve_for_vertex(int v)
 
 int solve_testcase()
 {
-	int max_dist = solve_for_vertex(1);
+	int max_dist = 0;//solve_for_vertex(1);
 #if DEBUG
 	cout << "nedjes " << n_edjes << endl;
 #endif
@@ -205,13 +205,11 @@ int solve_testcase()
 int main()
 {
 	int T, N;
+	std::ios::sync_with_stdio(false);
 	cin >> T;
 	for (int i_t = 0;  i_t < T; i_t++) {
 		int max_dist;
-		memset(adj_list, 0x0, MAX_N * MAX_N);
-		memset(adj_list_cost, 0x0, MAX_N * MAX_N);
 		memset(n_adj_list, 0x0, MAX_N);
-		memset(edjes, 0x0, (sizeof(struct edje) / sizeof(int)) * MAX_N);
 		n_edjes = 0;
 		n_vd = 0;
 		queue::flush();
