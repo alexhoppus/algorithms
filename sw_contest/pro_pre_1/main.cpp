@@ -25,14 +25,14 @@ static inline int get_cost(int v1, int v2)
 	return adj_list_cost[v1][v2];
 }
 
-static inline void set_visited(int v1)
+static inline void set_visited(int v1, int dist)
 {
-	visited[v1] = 1;
+	visited[v1] = dist;
 }
 
-static inline int is_visited(int v1)
+static inline bool is_visited(int v1)
 {
-	return visited[v1];
+	return visited[v1] == -1 ? false : true;
 }
 struct edje edjes[MAX_N];
 static int n_edjes = 0;
@@ -111,75 +111,51 @@ namespace queue {
 	}
 };
 
-struct vertex_dist {
-	int v;
-	int d;
-};
-
-#define MAX_VD_CACHE 2*1024*1024
-struct vertex_dist vd[MAX_VD_CACHE];
-static int n_vd = 0;
-
-struct vertex_dist *alloc_vd()
+int bfs(int vertex)
 {
-	return &vd[n_vd++];
-}
+	int max_v = vertex;
+	memset(visited, -1, MAX_N);
 
-struct vertex_dist *bfs(struct vertex_dist *vd)
-{
-	int max_d = 0;
-	struct vertex_dist *max_vd = vd;
-	memset(visited, 0x0, MAX_N);
-
-	queue::push(vd);
-	set_visited(vd->v);
-#if DEBUG
-	cout << "BFS started from vertex " << vd->v << endl;
-#endif
+	queue::push(&vertex);
+	set_visited(vertex, 0);
 
 	while(queue::size()) {
-		struct vertex_dist *vd = (struct vertex_dist *)queue::pop();
-		if (vd->d > max_vd->d) {
+		int *v = (int *)queue::pop();
 #if DEBUG
-			cout << "max_vd set to " << vd->d << endl;
+	cout << "BFS pop vertex " << *v << endl;
 #endif
-			max_vd = vd;
+		if (visited[max_v] < visited[*v]) {
+#if DEBUG
+			cout << "max_v set to " << *v << endl;
+#endif
+			max_v = *v;
 		}
-		int *v = &vd->v;
-#if DEBUG
-		cout << "qsize " << queue::size() <<  " v " << vd->v << " dist " << vd->d << " n_adj_list[*v] " << n_adj_list[*v] << endl;
-#endif
 		for (int i = 0; i < n_adj_list[*v]; i++) {
 			int *neighbour = &adj_list[*v][i];
 			if (!is_visited(*neighbour) && !is_edje_forbidden(*v, *neighbour)) {
-				struct vertex_dist *neighbour_vd = alloc_vd();
-				neighbour_vd->v = *neighbour;
-				neighbour_vd->d = vd->d + get_cost(*neighbour, *v);
-				queue::push(neighbour_vd);
-				set_visited(*neighbour);
+#if DEBUG
+				cout << "neighbour " << *neighbour << endl;
+				cout << "visited["<< *neighbour << "] = " << visited[*v] + get_cost(*neighbour, *v) << endl;
+#endif
+				queue::push(neighbour);
+				set_visited(*neighbour, visited[*v] + get_cost(*neighbour, *v));
 			}
 		}
 	}
-	return max_vd;
+	return max_v;
 }
 
 int solve_for_vertex(int v)
 {
-	n_vd = 0;
 	queue::flush();
-
-	struct vertex_dist *vd = alloc_vd();
-	vd->v = v;
-	vd->d = 0;
-	struct vertex_dist *new_vd = bfs(vd);
-	new_vd->d = 0;
-	struct vertex_dist *max_vd = bfs(new_vd);
-	return max_vd->d;
+	int new_v = bfs(v);
+	int max_v = bfs(new_v);
+	return visited[max_v];
 }
 
 int solve_testcase()
 {
-	int max_dist = 0;//solve_for_vertex(1);
+	int max_dist = 0;
 #if DEBUG
 	cout << "nedjes " << n_edjes << endl;
 #endif
@@ -211,7 +187,6 @@ int main()
 		int max_dist;
 		memset(n_adj_list, 0x0, MAX_N);
 		n_edjes = 0;
-		n_vd = 0;
 		queue::flush();
 		cin >> N;
 		for (int i_n = 0; i_n < N - 1; i_n++) {
